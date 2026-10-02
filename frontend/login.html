@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow - Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-page">
+    <main class="auth-shell">
+        <section class="auth-visual" aria-label="TaskFlow overview">
+            <a class="brand-logo" href="/" aria-label="TaskFlow home">
+                <span class="brand-symbol" aria-hidden="true">TF</span>
+                <span>Task<span class="brand-accent">Flow</span></span>
+            </a>
+            <div class="visual-copy">
+                <p class="visual-eyebrow">Employee task management</p>
+                <h1>Build better teams,<br><span>deliver faster.</span></h1>
+                <p>Organize tasks, collaborate with your team, and keep every project moving in one place.</p>
+            </div>
+            <ul class="feature-list">
+                <li><span class="feature-icon icon-blue" aria-hidden="true">&#10003;</span><span><strong>Task management</strong><small>Organize work and track progress.</small></span></li>
+                <li><span class="feature-icon icon-violet" aria-hidden="true">&#9679;</span><span><strong>Team collaboration</strong><small>Keep everyone moving together.</small></span></li>
+                <li><span class="feature-icon icon-teal" aria-hidden="true">&lt;/&gt;</span><span><strong>CI/CD integration</strong><small>Connect delivery to the work.</small></span></li>
+                <li><span class="feature-icon icon-orange" aria-hidden="true">&#8599;</span><span><strong>Local deployment</strong><small>Move from plan to production.</small></span></li>
+            </ul>
+            <div class="workflow-preview" aria-hidden="true">
+                <div class="preview-heading"><span>TEAM WORKFLOW</span><span class="preview-live"><i></i> IN PROGRESS</span></div>
+                <div class="preview-task"><span class="preview-check">&#10003;</span><span>Plan the next release</span><span class="preview-tag">DONE</span></div>
+                <div class="preview-task"><span class="preview-check preview-current"></span><span>Review team tasks</span><span class="preview-tag preview-tag-current">TODAY</span></div>
+                <div class="preview-task"><span class="preview-check"></span><span>Ship the update</span><span class="preview-tag">NEXT</span></div>
+                <div class="preview-progress"><span></span></div>
+            </div>
+            <p class="visual-footer">Plan <span>·</span> Collaborate <span>·</span> Deliver</p>
+        </section>
+
+        <section class="auth-side" aria-labelledby="loginHeading">
+            <div class="auth-topline">New to TaskFlow? <a href="register.html">Create account</a></div>
+            <div class="auth-card">
+                <div class="auth-card-brand">
+                    <span class="brand-symbol" aria-hidden="true">TF</span>
+                    <span>Task<span class="brand-accent">Flow</span></span>
+                </div>
+                <p class="form-eyebrow">WELCOME BACK</p>
+                <h2 id="loginHeading">Sign in to TaskFlow</h2>
+                <p class="form-lede">Pick up where your team left off.</p>
+                <form class="auth-form" onsubmit="login(event)">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter your username" autocomplete="username" minlength="3" maxlength="80" required>
+                    <label for="password">Password</label>
+                    <div class="password-field">
+                        <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" minlength="8" maxlength="128" required>
+                        <button class="password-toggle" type="button" onclick="togglePassword('password', this)" aria-label="Show password">Show</button>
+                    </div>
+                    <div id="otpField" class="hidden-auth-field">
+                        <label for="otp">Authenticator code</label>
+                        <input type="text" id="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="Enter 6-digit code" autocomplete="one-time-code">
+                    </div>
+                    <button class="auth-submit" type="submit">Sign in</button>
+                </form>
+                <p id="message" class="form-message" role="status" aria-live="polite"></p>
+                <div class="auth-divider"><span>Secure team workspace</span></div>
+            </div>
+            <p class="auth-legal">TaskFlow <span>·</span> Manage work with clarity</p>
+        </section>
+    </main>
+    <script src="auth.js" defer></script>
+</body>
+</html>

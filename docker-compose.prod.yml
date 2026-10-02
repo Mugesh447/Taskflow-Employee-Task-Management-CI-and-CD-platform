@@ -1,0 +1,11 @@
+services:
+  backend:
+    environment:
+      TASKFLOW_SECRET_KEY: ${TASKFLOW_SECRET_KEY:?Set TASKFLOW_SECRET_KEY}
+      TASKFLOW_DATABASE_URI: postgresql+psycopg://${POSTGRES_USER:-taskflow}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-taskflow}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started

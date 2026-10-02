@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow Dashboard</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#061d4d">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="workspace-shell">
+        <aside class="sidebar">
+            <a class="sidebar-brand" href="/" aria-label="TaskFlow home">
+                <span class="sidebar-mark" aria-hidden="true">TF</span>
+                <span>Task<span>Flow</span></span>
+            </a>
+            <p class="sidebar-label">WORKSPACE</p>
+            <nav class="sidebar-nav" aria-label="Workspace">
+                <a class="nav-link is-active" href="#overview"><span aria-hidden="true">&#9638;</span> Dashboard</a>
+                <a class="nav-link" href="#task-board"><span aria-hidden="true">&#9744;</span> Tasks</a>
+                <a class="nav-link" href="#employees"><span aria-hidden="true">&#128100;</span> Employees</a>
+                <a class="nav-link" href="#service"><span aria-hidden="true">&#9678;</span> CI/CD Pipeline</a>
+                <a class="nav-link" href="#notifications"><span aria-hidden="true">&#128276;</span> Notifications</a>
+                <a class="nav-link" href="#settings"><span aria-hidden="true">&#9881;</span> Settings</a>
+                <a class="nav-link" href="#adminPanel"><span aria-hidden="true">&#9878;</span> Admin</a>
+            </nav>
+            <div class="sidebar-bottom">
+                <span class="online-indicator"></span>
+                <div><strong>Workspace online</strong><small>TaskFlow local</small></div>
+            </div>
+        </aside>
+
+        <div class="workspace-content">
+            <header class="topbar">
+                <div class="global-search">
+                    <span class="search-icon" aria-hidden="true">&#128269;</span>
+                    <input type="search" placeholder="Search tasks, employees, or pipelines..." aria-label="Search tasks">
+                </div>
+                <div class="topbar-account">
+                    <span class="notification-badge" id="notificationBadge" aria-label="Notifications">0</span>
+                    <span class="topbar-date" id="currentDate" aria-live="polite"></span>
+                    <span class="account-avatar" aria-hidden="true">TF</span>
+                    <span id="welcomeUser" class="welcome-user"></span>
+                    <button class="button button-quiet" type="button" onclick="logout()">Log out</button>
+                </div>
+            </header>
+
+            <main class="dashboard workspace-main" id="overview">
+                <section class="dashboard-heading">
+                    <div>
+                        <p class="eyebrow">WORKSPACE OVERVIEW</p>
+                        <h1>TaskFlow Dashboard</h1>
+                        <p class="section-copy">Manage tasks and keep your work moving.</p>
+                    </div>
+                    <button class="button button-primary create-task-shortcut" type="button" onclick="openTaskModal()">+ Create task</button>
+                </section>
+
+                <section class="metric-grid" aria-label="Task summary">
+                    <article class="metric-card metric-blue">
+                        <span class="metric-icon" aria-hidden="true">&#9638;</span>
+                        <div><p>Total tasks</p><strong id="metricTotal">0</strong><small>In your workspace</small></div>
+                    </article>
+                    <article class="metric-card metric-amber">
+                        <span class="metric-icon" aria-hidden="true">&#9681;</span>
+                        <div><p>Pending</p><strong id="metricPending">0</strong><small>Ready to move forward</small></div>
+                    </article>
+                    <article class="metric-card metric-green">
+                        <span class="metric-icon" aria-hidden="true">&#10003;</span>
+                        <div><p>Completed</p><strong id="metricCompleted">0</strong><small>Tasks finished</small></div>
+                    </article>
+                    <article class="metric-card metric-cyan">
+                        <span class="metric-icon" aria-hidden="true">&#8599;</span>
+                        <div><p>Completion</p><strong id="metricRate">0%</strong><small>Of all tasks</small></div>
+                    </article>
+                </section>
+
+                <section class="dashboard-grid">
+                    <div class="primary-column">
+                        <section class="panel task-board-panel" id="task-board" aria-labelledby="taskBoardHeading">
+                            <div class="panel-heading board-heading">
+                                <div><h2 id="taskBoardHeading">Task board</h2><p id="taskSummary" class="panel-subtitle">Your task list</p><span class="live-sync-status"><i class="live-dot"></i><span id="liveSyncStatus">Live updates</span></span></div>
+                                <div class="task-filters">
+                                    <label class="visually-hidden" for="taskSearch">Search task titles</label>
+                                    <input type="search" id="taskSearch" placeholder="Search tasks" oninput="renderTasks()">
+                                    <label class="visually-hidden" for="statusFilter">Filter by status</label>
+                                    <select id="statusFilter" onchange="renderTasks()">
+                                        <option value="All">All tasks</option>
+                                        <option value="To Do">To Do</option>
+                                        <option value="In Progress">In Progress</option>
+                                        <option value="Review">Review</option>
+                                        <option value="Completed">Completed</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="task-table-toolbar">
+                                <div class="chip-row">
+                                    <button class="chip chip-active" type="button">All (12)</button>
+                                    <button class="chip" type="button">To Do (4)</button>
+                                    <button class="chip" type="button">In Progress (5)</button>
+                                    <button class="chip" type="button">Completed (3)</button>
+                                </div>
+                                <div class="bulk-toolbar" id="bulkToolbar"><span id="selectedTaskCount">0 selected</span><select id="bulkStatus"><option value="">Set status</option><option>To Do</option><option>In Progress</option><option>Review</option><option>Completed</option></select><select id="bulkPriority"><option value="">Set priority</option><option>High</option><option>Medium</option><option>Low</option></select><button class="button button-secondary" type="button" onclick="applyBulkUpdate()">Apply</button><button class="button button-danger" type="button" onclick="deleteSelectedTasks()">Delete selected</button></div>
+                            </div>
+                            <p id="taskMessage" class="form-message" role="status" aria-live="polite"></p>
+                            <div class="board-columns workflow-board">
+                                <section class="board-lane" data-status="To Do"><div class="lane-heading"><h3><span class="lane-dot dot-amber"></span> To Do</h3><span class="lane-count" id="todoCount">0</span></div><div id="todoTasks" class="lane-tasks"></div></section>
+                                <section class="board-lane" data-status="In Progress"><div class="lane-heading"><h3><span class="lane-dot dot-blue"></span> In Progress</h3><span class="lane-count" id="progressCount">0</span></div><div id="progressTasks" class="lane-tasks"></div></section>
+                                <section class="board-lane" data-status="Review"><div class="lane-heading"><h3><span class="lane-dot dot-purple"></span> Review</h3><span class="lane-count" id="reviewCount">0</span></div><div id="reviewTasks" class="lane-tasks"></div></section>
+                                <section class="board-lane" data-status="Completed"><div class="lane-heading"><h3><span class="lane-dot dot-green"></span> Completed</h3><span class="lane-count" id="completedCount">0</span></div><div id="completedTasks" class="lane-tasks"></div></section>
+                            </div>
+                        </section>
+
+                        <section class="panel employee-panel" id="employees" aria-labelledby="employeeHeading">
+                            <div class="panel-heading"><div><h2 id="employeeHeading">Employees</h2><p class="panel-subtitle">Team distribution</p></div><button class="button button-secondary" type="button" onclick="openEmployeeModal()">+ Add Employee</button></div>
+                            <div class="employee-grid" id="employeeGrid"></div>
+                        </section>
+                    </div>
+
+                    <aside class="secondary-column">
+                        <section class="panel service-panel" id="service" aria-labelledby="serviceHeading">
+                            <div class="panel-heading"><div><h2 id="serviceHeading">System status</h2><p class="panel-subtitle">Live backend connection</p></div><button class="button button-secondary" type="button" onclick="triggerPipeline()">Run pipeline</button></div>
+                            <div class="service-status-row"><span class="service-dot is-checking" id="serviceDot"></span><strong id="serviceState">Checking service</strong></div>
+                            <p id="serviceDetail" class="service-detail">Connecting to the TaskFlow API...</p>
+                            <div class="service-divider"></div>
+                            <div class="pipeline-list" id="pipelineList"></div>
+                        </section>
+
+                        <section class="panel progress-panel" aria-labelledby="progressHeading">
+                            <div class="panel-heading"><div><h2 id="progressHeading">Task progress</h2><p class="panel-subtitle">Completion across your tasks</p></div></div>
+                            <div class="progress-ring" id="progressRing"><span id="progressRingValue">0%</span></div>
+                            <div class="progress-legend"><span><i class="legend-dot dot-green"></i> Completed</span><strong id="progressCompletedLabel">0</strong></div>
+                            <div class="progress-legend"><span><i class="legend-dot dot-amber"></i> Pending</span><strong id="progressPendingLabel">0</strong></div>
+                        </section>
+
+                        <section class="panel notifications-panel" id="notifications" aria-labelledby="notificationsHeading">
+                            <div class="panel-heading"><div><h2 id="notificationsHeading">Notifications</h2><p class="panel-subtitle">Recent updates</p></div></div>
+                            <ul class="notification-list" id="notificationList"></ul>
+                        </section>
+                    </aside>
+                </section>
+                <section class="panel settings-panel" id="settings" aria-labelledby="settingsHeading">
+                    <div class="panel-heading"><div><h2 id="settingsHeading">Settings</h2><p class="panel-subtitle">Personal dashboard preferences</p></div><span class="service-icon" aria-hidden="true">&#9881;</span></div>
+                    <div class="settings-grid">
+                        <label class="setting-row"><span><strong>Auto-refresh notifications</strong><small>Refresh unread activity every 30 seconds.</small></span><input type="checkbox" id="settingAutoRefresh" checked onchange="saveSettings()"></label>
+                        <label class="setting-row"><span><strong>Compact task cards</strong><small>Use a denser task board layout.</small></span><input type="checkbox" id="settingCompactTasks" onchange="saveSettings()"></label>
+                        <label class="setting-row"><span><strong>Show completed tasks</strong><small>Keep completed work visible on the board.</small></span><input type="checkbox" id="settingShowCompleted" checked onchange="saveSettings()"></label>
+                        <label class="setting-row"><span><strong>Dark mode</strong><small>Use a darker workspace theme.</small></span><input type="checkbox" id="settingDarkMode" onchange="saveSettings()"></label>
+                        <button class="button button-secondary" type="button" onclick="downloadTaskReport()">Download CSV report</button>
+                        <button class="button button-secondary" type="button" onclick="downloadPdfReport()">Download PDF report</button>
+                        <button class="button button-secondary" type="button" onclick="setupTwoFactor()">Set up authenticator OTP</button>
+                        <button class="button button-secondary" type="button" onclick="enableBrowserNotifications()">Enable browser notifications</button>
+                    </div>
+                    <p id="settingsMessage" class="form-message" role="status" aria-live="polite"></p>
+                </section>
+                <section class="product-grid">
+                    <section class="panel analytics-panel" aria-labelledby="analyticsHeading">
+                        <div class="panel-heading"><div><h2 id="analyticsHeading">Analytics</h2><p class="panel-subtitle">Live workload overview</p></div><div class="report-filters"><input id="reportFrom" type="date" aria-label="Report from date"><input id="reportTo" type="date" aria-label="Report to date"><button class="chip chip-active" type="button" onclick="applyReportFilter()">Apply</button></div></div>
+                        <div class="analytics-stats"><div><strong id="analyticsTotal">0</strong><small>Total</small></div><div><strong id="analyticsCompleted">0</strong><small>Completed</small></div><div><strong id="analyticsOverdue">0</strong><small>Overdue</small></div></div>
+                        <div class="analytics-bars"><div><span>High priority</span><b id="highPriorityBar"></b></div><div><span>Medium priority</span><b id="mediumPriorityBar"></b></div><div><span>Low priority</span><b id="lowPriorityBar"></b></div></div>
+                    </section>
+                    <section class="panel calendar-panel" aria-labelledby="calendarHeading">
+                        <div class="panel-heading"><div><h2 id="calendarHeading">Upcoming calendar</h2><p class="panel-subtitle">Tasks with due dates</p></div><div class="calendar-controls"><button class="chip chip-active" onclick="setCalendarView('month')">Month</button><button class="chip" onclick="setCalendarView('week')">Week</button><button class="chip" onclick="setCalendarView('day')">Day</button></div></div>
+                        <div id="calendarGrid" class="calendar-grid"></div><div id="calendarList" class="calendar-list"></div>
+                    </section>
+                    <section class="panel activity-panel" aria-labelledby="activityHeading">
+                        <div class="panel-heading"><div><h2 id="activityHeading">Activity history</h2><p class="panel-subtitle">Recent workspace events</p></div></div>
+                        <div id="activityList" class="activity-list"></div>
+                    </section>
+                    <section class="panel admin-panel" id="adminPanel" aria-labelledby="adminHeading">
+                        <div class="panel-heading"><div><h2 id="adminHeading">Admin control</h2><p class="panel-subtitle">Manage workspace access</p></div></div>
+                        <div id="adminUserList" class="admin-user-list"><p class="lane-empty">Admin access required.</p></div>
+                        <div class="admin-actions"><button class="button button-secondary" type="button" onclick="loadMonitoringMetrics()">Refresh monitoring</button><button class="button button-secondary" type="button" onclick="createDatabaseBackup()">Create database backup</button></div>
+                        <p id="monitoringMessage" class="form-message" role="status" aria-live="polite"></p>
+                    </section>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <div class="modal-backdrop hidden" id="taskModal" aria-hidden="true">
+        <div class="task-modal" role="dialog" aria-modal="true" aria-labelledby="taskModalTitle">
+            <div class="modal-header">
+                <h3 id="taskModalTitle">Create New Task</h3>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeTaskModal()">×</button>
+            </div>
+            <form id="taskCreateForm" onsubmit="submitTaskForm(event)">
+                <label>
+                    <span>Task Title *</span>
+                    <input type="text" id="taskFormTitle" maxlength="200" required>
+                </label>
+                <label>
+                    <span>Description</span>
+                    <textarea id="taskFormDescription" rows="3" placeholder="Enter task description"></textarea>
+                </label>
+                <div class="modal-row">
+                    <label>
+                        <span>Assigned To</span>
+                        <select id="taskFormAssignee"><option value="">Unassigned</option></select>
+                    </label>
+                    <label>
+                        <span>Priority *</span>
+                        <select id="taskFormPriority">
+                            <option value="High">High</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="modal-row">
+                    <label>
+                        <span>Due Date</span>
+                        <input type="date" id="taskFormDueDate">
+                    </label>
+                    <label>
+                        <span>Status</span>
+                        <select id="taskFormStatus">
+                            <option value="To Do" selected>To Do</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Review">Review</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="button button-quiet" onclick="closeTaskModal()">Cancel</button>
+                    <button type="submit" class="button button-primary">Create Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="modal-backdrop hidden" id="employeeModal" aria-hidden="true">
+        <div class="task-modal" role="dialog" aria-modal="true" aria-labelledby="employeeModalTitle">
+            <div class="modal-header">
+                <h3 id="employeeModalTitle">Add Employee</h3>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeEmployeeModal()">×</button>
+            </div>
+            <form id="employeeForm" onsubmit="submitEmployeeForm(event)">
+                <input type="hidden" id="employeeId">
+                <label><span>Name *</span><input id="employeeName" maxlength="80" required></label>
+                <label><span>Email *</span><input id="employeeEmail" type="email" maxlength="160" required></label>
+                <label><span>Role</span><input id="employeeRole" maxlength="80" value="Employee"></label>
+                <label><span>Status</span><select id="employeeStatus"><option>Active</option><option>On leave</option><option>Inactive</option></select></label>
+                <div class="modal-actions"><button type="button" class="button button-quiet" onclick="closeEmployeeModal()">Cancel</button><button type="submit" class="button button-primary" id="employeeSubmitButton">Add Employee</button></div>
+            </form>
+        </div>
+    </div>
+    <div class="modal-backdrop hidden" id="employeeDetailsModal" aria-hidden="true">
+        <div class="task-modal" role="dialog" aria-modal="true" aria-labelledby="employeeDetailsTitle">
+            <div class="modal-header"><h3 id="employeeDetailsTitle">Employee details</h3><button type="button" class="modal-close" aria-label="Close" onclick="closeEmployeeDetails()">×</button></div>
+            <div id="employeeDetailsContent" class="employee-details-content"></div>
+            <div class="modal-actions"><button type="button" class="button button-primary" onclick="closeEmployeeDetails()">Close</button></div>
+        </div>
+    </div>
+    <div class="modal-backdrop hidden" id="commentsModal" aria-hidden="true">
+        <div class="task-modal comments-modal" role="dialog" aria-modal="true" aria-labelledby="commentsTitle">
+            <div class="modal-header"><h3 id="commentsTitle">Task comments</h3><button type="button" class="modal-close" aria-label="Close" onclick="closeComments()">×</button></div>
+            <div id="commentsList" class="comments-list"></div>
+            <form id="commentForm" class="comment-form" onsubmit="submitComment(event)"><input id="commentBody" maxlength="1000" placeholder="Write a comment..." required><button class="button button-primary" type="submit">Post</button></form>
+            <form id="attachmentForm" class="comment-form" onsubmit="uploadAttachment(event)"><input id="attachmentFile" type="file" required><button class="button button-secondary" type="submit">Attach</button></form>
+            <div id="attachmentList" class="attachment-list"></div>
+        </div>
+    </div>
+    <script src="script.js" defer></script>
+    <script src="dashboard.js" defer></script>
+</body>
+</html>

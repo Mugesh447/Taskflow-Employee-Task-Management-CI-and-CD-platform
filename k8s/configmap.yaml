@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: taskflow-config
+data:
+  APP_ENV: "production"
+  JENKINS_JOB: "taskflow"
+  REDIS_URL: "redis://taskflow-redis:6379/0"

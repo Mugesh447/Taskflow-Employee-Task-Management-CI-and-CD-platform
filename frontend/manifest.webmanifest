@@ -1,0 +1,9 @@
+{
+  "name": "TaskFlow Employee Task Management",
+  "short_name": "TaskFlow",
+  "start_url": "/dashboard.html",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#061d4d",
+  "icons": []
+}
