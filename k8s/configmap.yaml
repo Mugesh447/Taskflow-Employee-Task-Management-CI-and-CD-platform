@@ -6,3 +6,8 @@ data:
   APP_ENV: "production"
   JENKINS_JOB: "taskflow"
   REDIS_URL: "redis://taskflow-redis:6379/0"
+  TASKFLOW_PUBLIC_URL: "https://taskflow.example.com"
+  TASKFLOW_SMTP_HOST: ""
+  TASKFLOW_SMTP_PORT: "587"
+  TASKFLOW_SMTP_FROM: ""
+  TASKFLOW_SMTP_STARTTLS: "true"

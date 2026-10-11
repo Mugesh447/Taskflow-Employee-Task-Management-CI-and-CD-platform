@@ -20,7 +20,7 @@ async function submitTaskForm(event) {
     const dueDate = document.getElementById("taskFormDueDate").value || null;
     const status = document.getElementById("taskFormStatus").value;
     const description = document.getElementById("taskFormDescription").value.trim() || null;
-    const assignee = document.getElementById("taskFormAssignee").value || null;
+    const assigneeId = Number(document.getElementById("taskFormAssignee").value) || null;
 
     if (!title) {
         document.getElementById("taskMessage").textContent = "Enter a task title.";
@@ -31,11 +31,12 @@ async function submitTaskForm(event) {
         await sendTaskRequest(API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title, description, assignee, priority, due_date: dueDate, status })
+            body: JSON.stringify({ title, description, assignee_id: assigneeId, priority, due_date: dueDate, status })
         });
         closeTaskModal();
         document.getElementById("taskMessage").textContent = "Task added.";
         await loadTasks();
+        if (canManageEmployees) await loadWorkload();
     } catch (error) {
         document.getElementById("taskMessage").textContent = error.message;
     }
@@ -103,6 +104,9 @@ function renderTasks() {
         const meta = document.createElement("div");
         const priority = document.createElement("span");
         const dueDate = document.createElement("small");
+        const assigneeWrap = document.createElement("div");
+        const assigneeAvatar = document.createElement("span");
+        const assigneeName = document.createElement("small");
         const actions = document.createElement("div");
         const statusButton = document.createElement("button");
         const editButton = document.createElement("button");
@@ -128,17 +132,30 @@ function renderTasks() {
         priority.className = `priority-pill priority-${(task.priority || "Medium").toLowerCase()}`;
         priority.textContent = task.priority || "Medium";
         dueDate.textContent = task.due_date ? `Due ${task.due_date}` : "No due date";
+        assigneeWrap.className = "assignee-wrap";
         if (task.assignee) {
-            const assignee = document.createElement("small");
-            assignee.textContent = `For ${task.assignee}`;
-            meta.append(assignee);
+            const initials = task.assignee.split(" ").map(part => part[0]).join("").slice(0, 2).toUpperCase();
+            assigneeAvatar.className = "assignee-avatar";
+            assigneeAvatar.textContent = initials;
+            assigneeName.textContent = task.assignee;
+            assigneeWrap.append(assigneeAvatar, assigneeName);
         }
         actions.className = "task-card-actions";
         statusButton.className = "task-action task-action-primary";
-        statusButton.textContent = task.status === "Completed" ? "Reopen" : "Complete";
+        const employeeStatusSteps = {
+            "Pending": ["In Progress", "Start task"],
+            "To Do": ["In Progress", "Start task"],
+            "In Progress": ["Review", "Send to review"],
+            "Review": ["Completed", "Complete task"],
+            "Completed": ["Pending", "Reopen"],
+        };
+        const [nextStatus, statusLabel] = employeeStatusSteps[task.status] || employeeStatusSteps.Pending;
+        statusButton.textContent = canManageTasks
+            ? (task.status === "Completed" ? "Reopen" : "Complete")
+            : statusLabel;
         statusButton.addEventListener("click", () => updateTaskStatus(
             task.id,
-            task.status === "Completed" ? "Pending" : "Completed"
+            canManageTasks ? (task.status === "Completed" ? "Pending" : "Completed") : nextStatus
         ));
         editButton.className = "task-action";
         editButton.textContent = "Edit";
@@ -151,8 +168,10 @@ function renderTasks() {
         commentButton.addEventListener("click", () => openComments(task.id, task.title));
 
         meta.append(priority, dueDate);
-        actions.append(statusButton, editButton, commentButton, deleteButton);
-        taskCard.append(selectBox, title, description, meta, actions);
+        if (canManageTasks) actions.append(editButton);
+        actions.append(statusButton, commentButton);
+        if (canManageTasks) actions.append(deleteButton);
+        taskCard.append(...(canManageTasks ? [selectBox] : []), title, description, meta, assigneeWrap, actions);
         taskList.appendChild(taskCard);
     });
 }
@@ -170,6 +189,7 @@ async function applyBulkUpdate() {
     await sendTaskRequest(`${API_URL}/bulk`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: [...selectedTaskIds], status, priority }) });
     selectedTaskIds.clear();
     await loadTasks();
+    if (canManageEmployees) await loadWorkload();
 }
 
 async function deleteSelectedTasks() {
@@ -177,6 +197,7 @@ async function deleteSelectedTasks() {
     await sendTaskRequest(`${API_URL}/bulk`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: [...selectedTaskIds] }) });
     selectedTaskIds.clear();
     await loadTasks();
+    if (canManageEmployees) await loadWorkload();
 }
 
 function createEmptyState(message) {
@@ -233,6 +254,7 @@ async function deleteTask(id) {
         await sendTaskRequest(`${API_URL}/${id}`, { method: "DELETE" });
         document.getElementById("taskMessage").textContent = "Task deleted.";
         await loadTasks();
+        if (canManageEmployees) await loadWorkload();
     } catch (error) {
         document.getElementById("taskMessage").textContent = error.message;
     }
@@ -247,6 +269,7 @@ async function updateTaskStatus(id, status) {
         });
         document.getElementById("taskMessage").textContent = "Task status updated.";
         await loadTasks();
+        if (canManageEmployees) await loadWorkload();
     } catch (error) {
         document.getElementById("taskMessage").textContent = error.message;
     }
@@ -271,6 +294,7 @@ async function editTask(id, currentTitle, currentPriority, currentDueDate) {
         });
         document.getElementById("taskMessage").textContent = "Task updated.";
         await loadTasks();
+        if (canManageEmployees) await loadWorkload();
     } catch (error) {
         document.getElementById("taskMessage").textContent = error.message;
     }

@@ -9,6 +9,14 @@ services:
     environment:
       TASKFLOW_SECRET_KEY: ${TASKFLOW_SECRET_KEY:-local-development-only-change-me}
       TASKFLOW_DATABASE_URI: ${TASKFLOW_DATABASE_URI:-sqlite:////app/instance/taskflow.db}
+      TASKFLOW_START_REMINDER_SCHEDULER: ${TASKFLOW_START_REMINDER_SCHEDULER:-true}
+      TASKFLOW_PUBLIC_URL: ${TASKFLOW_PUBLIC_URL:-http://localhost:5001}
+      TASKFLOW_SMTP_HOST: ${TASKFLOW_SMTP_HOST:-}
+      TASKFLOW_SMTP_PORT: ${TASKFLOW_SMTP_PORT:-587}
+      TASKFLOW_SMTP_USER: ${TASKFLOW_SMTP_USER:-}
+      TASKFLOW_SMTP_PASSWORD: ${TASKFLOW_SMTP_PASSWORD:-}
+      TASKFLOW_SMTP_FROM: ${TASKFLOW_SMTP_FROM:-}
+      TASKFLOW_SMTP_STARTTLS: ${TASKFLOW_SMTP_STARTTLS:-true}
     volumes:
       - taskflow_data:/app/instance
     healthcheck:

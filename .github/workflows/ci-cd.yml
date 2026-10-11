@@ -1,4 +1,4 @@
-name: TaskFlow CI/CD
+name: TaskFlow AWS CI/CD
 
 on:
   push:
@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   test:
@@ -23,49 +22,128 @@ jobs:
         run: python -m compileall -q backend
       - name: Run tests with coverage
         run: coverage run -m unittest discover -s tests -v && coverage report -m && coverage xml
+      - name: Validate Terraform formatting and configuration
+        if: github.event_name == 'pull_request'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - name: Terraform checks
+        if: github.event_name == 'pull_request'
+        working-directory: terraform
+        run: |
+          terraform fmt -check -recursive
+          terraform init -backend=false
+          terraform validate
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: taskflow-coverage
           path: coverage.xml
 
-  container:
+  deploy:
     needs: test
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - name: Configure AWS credentials with GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: type=sha
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  deploy:
-    needs: container
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.KUBE_DEPLOY == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-kubectl@v4
-      - name: Configure cluster
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push immutable image
         env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          mkdir -p ~/.kube
-          echo "$KUBE_CONFIG" | base64 --decode > ~/.kube/config
-      - name: Apply manifests
-        run: kubectl apply -f k8s/
-      - name: Wait for rollout
-        run: kubectl rollout status deployment/taskflow --timeout=180s
+          docker build --tag "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+      - name: Capture currently running task definition
+        id: previous-task
+        env:
+          ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+          ECS_SERVICE_NAME: ${{ vars.ECS_SERVICE_NAME }}
+        run: |
+          TASK_DEFINITION=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER_NAME" \
+            --services "$ECS_SERVICE_NAME" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          if [ -z "$TASK_DEFINITION" ] || [ "$TASK_DEFINITION" = "None" ]; then
+            echo "Could not determine the currently deployed task definition." >&2
+            exit 1
+          fi
+          echo "task_definition=$TASK_DEFINITION" >> "$GITHUB_OUTPUT"
+      - name: Read current ECS task definition
+        env:
+          PREVIOUS_TASK_DEFINITION: ${{ steps.previous-task.outputs.task_definition }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$PREVIOUS_TASK_DEFINITION" \
+            --query taskDefinition \
+            --output json > task-definition.json
+      - name: Set the image in the task definition
+        id: task-definition
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: taskflow
+          image: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
+      - name: Deploy the new task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-definition.outputs.task-definition }}
+          service: ${{ vars.ECS_SERVICE_NAME }}
+          cluster: ${{ vars.ECS_CLUSTER_NAME }}
+          wait-for-service-stability: true
+      - name: Ensure the service is running
+        env:
+          ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+          ECS_SERVICE_NAME: ${{ vars.ECS_SERVICE_NAME }}
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER_NAME" \
+            --service "$ECS_SERVICE_NAME" \
+            --desired-count 2
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER_NAME" \
+            --services "$ECS_SERVICE_NAME"
+      - name: Verify the public application health endpoint
+        env:
+          TASKFLOW_PUBLIC_URL: ${{ vars.TASKFLOW_PUBLIC_URL }}
+        run: |
+          if [ -z "$TASKFLOW_PUBLIC_URL" ]; then
+            echo "Set the TASKFLOW_PUBLIC_URL repository variable to the deployed HTTPS origin." >&2
+            exit 1
+          fi
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error --max-time 10 \
+              "${TASKFLOW_PUBLIC_URL%/}/api/health"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "TaskFlow did not pass its database-backed public health check." >&2
+          exit 1
+      - name: Roll back to the previously running task definition
+        if: failure() && steps.previous-task.outputs.task_definition != ''
+        env:
+          ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+          ECS_SERVICE_NAME: ${{ vars.ECS_SERVICE_NAME }}
+          PREVIOUS_TASK_DEFINITION: ${{ steps.previous-task.outputs.task_definition }}
+        run: |
+          echo "Deployment verification failed; restoring $PREVIOUS_TASK_DEFINITION."
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER_NAME" \
+            --service "$ECS_SERVICE_NAME" \
+            --task-definition "$PREVIOUS_TASK_DEFINITION"
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER_NAME" \
+            --services "$ECS_SERVICE_NAME"

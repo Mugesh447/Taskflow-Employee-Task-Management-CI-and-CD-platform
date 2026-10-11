@@ -1,26 +1,43 @@
+import os
 from datetime import date, timedelta
 
 from werkzeug.security import generate_password_hash
 
-from app_factory import ActivityLog, Employee, Notification, Task, TaskComment, User, create_app, db
+from app_factory import ActivityLog, Employee, Notification, Task, TaskComment, User, Workspace, create_app, db
 
 
 app = create_app()
 
 
 with app.app_context():
-    username = "demoadmin"
-    password = "demo12345"
+    username = os.environ.get("TASKFLOW_DEMO_USERNAME", "").strip()
+    password = os.environ.get("TASKFLOW_DEMO_PASSWORD", "")
+    if len(username) < 3 or len(password) < 8:
+        raise RuntimeError(
+            "Set TASKFLOW_DEMO_USERNAME (at least 3 characters) and "
+            "TASKFLOW_DEMO_PASSWORD (at least 8 characters) before seeding demo data."
+        )
 
     user = User.query.filter_by(username=username).first()
     if user is None:
+        workspace = Workspace(name="TaskFlow Demo")
+        db.session.add(workspace)
+        db.session.flush()
         user = User(
             username=username,
             password=generate_password_hash(password),
             role="Admin",
+            workspace_id=workspace.id,
         )
         db.session.add(user)
         db.session.flush()
+    elif user.workspace_id is None:
+        workspace = Workspace.query.filter_by(name="TaskFlow Team").order_by(Workspace.id.asc()).first()
+        if workspace is None:
+            workspace = Workspace(name=f"{username}'s Workspace")
+            db.session.add(workspace)
+            db.session.flush()
+        user.workspace_id = workspace.id
 
     existing_tasks = {task.title for task in Task.query.filter_by(user_id=user.id).all()}
 
@@ -80,6 +97,7 @@ with app.app_context():
             description=item["description"],
             position=index * 10,
             user_id=user.id,
+            workspace_id=user.workspace_id,
         )
         db.session.add(task)
         db.session.flush()
@@ -97,6 +115,7 @@ with app.app_context():
                 message=f"Demo task created: {item['title']}",
                 task_id=task.id,
                 user_id=user.id,
+                workspace_id=user.workspace_id,
             )
         )
 
@@ -124,9 +143,17 @@ with app.app_context():
                     role=role,
                     status=status,
                     user_id=user.id,
+                    workspace_id=user.workspace_id,
                 )
             )
 
+    db.session.flush()
+    for task in Task.query.filter_by(user_id=user.id, workspace_id=user.workspace_id).all():
+        if task.assignee and task.assignee_id is None:
+            employee = Employee.query.filter_by(workspace_id=user.workspace_id, name=task.assignee).first()
+            if employee:
+                task.assignee_id = employee.id
+
     db.session.commit()
-    print("Demo user created: demoadmin / demo12345")
+    print(f"Demo data created for username={username}")
     print(f"Demo tasks added for user_id={user.id}")
