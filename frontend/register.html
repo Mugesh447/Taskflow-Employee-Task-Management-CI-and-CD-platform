@@ -24,12 +24,20 @@
                 <li><span class="feature-icon icon-teal" aria-hidden="true">&lt;/&gt;</span><span><strong>CI/CD integration</strong><small>Connect delivery to the work.</small></span></li>
                 <li><span class="feature-icon icon-orange" aria-hidden="true">&#8599;</span><span><strong>Local deployment</strong><small>Move from plan to production.</small></span></li>
             </ul>
-            <div class="workflow-preview" aria-hidden="true">
-                <div class="preview-heading"><span>TEAM WORKFLOW</span><span class="preview-live"><i></i> IN PROGRESS</span></div>
-                <div class="preview-task"><span class="preview-check">&#10003;</span><span>Plan the next release</span><span class="preview-tag">DONE</span></div>
-                <div class="preview-task"><span class="preview-check preview-current"></span><span>Review team tasks</span><span class="preview-tag preview-tag-current">TODAY</span></div>
-                <div class="preview-task"><span class="preview-check"></span><span>Ship the update</span><span class="preview-tag">NEXT</span></div>
-                <div class="preview-progress"><span></span></div>
+            <div class="workflow-preview" id="workflowPreview" aria-hidden="true">
+                <div class="preview-heading"><span>SAMPLE TEAM WORKFLOW</span><span class="preview-count">3 TASKS</span></div>
+                <div class="preview-task">
+                    <div class="preview-task-main"><span class="preview-state done"></span><span class="preview-task-copy"><strong>Finalize deployment checklist</strong><small><i class="preview-avatar">PS</i> Priya &middot; completed yesterday</small></span></div>
+                    <span class="preview-tag done">COMPLETED</span>
+                </div>
+                <div class="preview-task">
+                    <div class="preview-task-main"><span class="preview-state current"></span><span class="preview-task-copy"><strong>Review employee onboarding</strong><small><i class="preview-avatar avatar-teal">AR</i> Arun &middot; due today</small></span></div>
+                    <span class="preview-tag preview-tag-current">IN PROGRESS</span>
+                </div>
+                <div class="preview-task">
+                    <div class="preview-task-main"><span class="preview-state next"></span><span class="preview-task-copy"><strong>Update task assignment form</strong><small><i class="preview-avatar avatar-orange">MK</i> Meena &middot; due in 2 days</small></span></div>
+                    <span class="preview-tag next-tag">TO DO</span>
+                </div>
             </div>
             <p class="visual-footer">Plan <span>·</span> Collaborate <span>·</span> Deliver</p>
         </section>
@@ -43,10 +51,34 @@
                 </div>
                 <p class="form-eyebrow">GET STARTED</p>
                 <h2 id="registerHeading">Create your account</h2>
-                <p class="form-lede">Join TaskFlow and get your team organized.</p>
-                <form class="auth-form" onsubmit="register(event)">
+                <p class="form-lede" id="registerLede">Choose how you want to join TaskFlow.</p>
+                <div class="signup-choice-grid" id="signupChoice">
+                    <article class="signup-choice-card">
+                        <span class="signup-choice-label">WORKSPACE OWNER</span>
+                        <h3>Create an Admin account</h3>
+                        <p>Start a new workspace, manage tasks, and invite your team.</p>
+                        <button class="auth-submit" type="button" onclick="showAdminSignup()">Create workspace</button>
+                    </article>
+                    <article class="signup-choice-card">
+                        <span class="signup-choice-label">JOIN A TEAM</span>
+                        <h3>Join as an Employee</h3>
+                        <p>Use the invitation link sent by your workspace Admin to create your account.</p>
+                        <button class="auth-submit signup-secondary" type="button" onclick="showEmployeeInvite()">I have an invitation</button>
+                    </article>
+                </div>
+                <form class="signup-invite-form" id="signupInviteForm" onsubmit="continueWithInvitation(event)" hidden>
+                    <label for="signupInviteLink">Employee invitation link or token</label>
+                    <input type="text" id="signupInviteLink" autocomplete="url" placeholder="Paste the invite link from your Admin" required>
+                    <button class="auth-submit" type="submit">Verify invitation</button>
+                    <button class="auth-back-button" type="button" onclick="showSignupChoices()">Back to account types</button>
+                </form>
+                <form class="auth-form" id="registrationForm" onsubmit="register(event)" hidden>
+                    <button class="auth-back-button" type="button" onclick="showSignupChoices()">Back to account types</button>
                     <label for="username">Username</label>
                     <input type="text" id="username" name="username" placeholder="Choose a username" autocomplete="username" minlength="3" maxlength="80" required>
+                    <label for="recoveryEmail">Recovery email</label>
+                    <input type="email" id="recoveryEmail" name="email" placeholder="you@example.com" autocomplete="email" maxlength="160" required>
+                    <p class="role-hint">We’ll use this address only for password recovery and account security.</p>
                     <label for="password">Password</label>
                     <div class="password-field">
                         <input type="password" id="password" name="password" placeholder="Create a strong password" autocomplete="new-password" minlength="8" maxlength="128" oninput="updatePasswordStrength()" required>
@@ -59,6 +91,9 @@
                         <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Enter your password again" autocomplete="new-password" minlength="8" maxlength="128" required>
                         <button class="password-toggle" type="button" onclick="togglePassword('confirmPassword', this)" aria-label="Show password">Show</button>
                     </div>
+                    <label for="accountRole">Account role</label>
+                    <input type="text" id="accountRole" name="role" value="Checking role..." readonly aria-describedby="accountRoleHint">
+                    <p id="accountRoleHint" class="role-hint">Your access level is assigned securely by TaskFlow.</p>
                     <button class="auth-submit" type="submit">Create account</button>
                 </form>
                 <p id="message" class="form-message" role="status" aria-live="polite"></p>

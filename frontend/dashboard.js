@@ -1,4 +1,7 @@
 let liveRefreshInProgress = false;
+let canManageEmployees = false;
+let canManageTasks = false;
+let currentAccountRole = "";
 
 async function initializeDashboard() {
     try {
@@ -10,14 +13,24 @@ async function initializeDashboard() {
         }
 
         const user = await response.json();
+        document.getElementById("settingRecoveryEmail").value = user.recovery_email || "";
+        canManageEmployees = ["Admin", "Manager"].includes(user.role);
+        canManageTasks = canManageEmployees;
+        currentAccountRole = user.role;
+        document.querySelectorAll(".manager-only").forEach(element => { element.hidden = !canManageEmployees; });
+        document.querySelectorAll(".admin-only").forEach(element => { element.hidden = user.role !== "Admin"; });
         document.getElementById("welcomeUser").textContent = `Welcome, ${user.username}`;
+        const roleBadge = document.getElementById("accountRoleBadge");
+        roleBadge.dataset.userId = user.id;
+        roleBadge.textContent = `${user.role} account`;
+        roleBadge.classList.add(user.role === "Admin" ? "success" : "running");
         updateLiveClock();
         window.setInterval(updateLiveClock, 1000);
         startRealtimeEvents();
         setupWorkflowBoard();
         checkServiceHealth();
         loadSettings();
-        await Promise.all([loadTasks(), loadEmployees(), loadNotifications(), loadPipelines(), loadAnalytics(), loadCalendar(), loadActivity(), loadAdminUsers()]);
+        await refreshVisibleDashboard();
         updateLiveSyncStatus("Live updates · synced now", true);
         window.setInterval(refreshLiveDashboard, 5000);
     } catch {
@@ -44,7 +57,12 @@ function startRealtimeEvents() {
     events.onmessage = async event => {
         const payload = JSON.parse(event.data);
         if (payload.type === "notification") {
-            await Promise.all([loadTasks(), loadNotifications(), loadActivity()]);
+            await Promise.all([
+                loadTasks(),
+                loadNotifications(),
+                loadActivity(),
+                ...(canManageEmployees ? [loadWorkload()] : []),
+            ]);
             updateLiveSyncStatus("Live push · updated now", true);
         }
     };
@@ -67,13 +85,28 @@ async function refreshLiveDashboard() {
     liveRefreshInProgress = true;
     updateLiveSyncStatus("Syncing live updates...", false);
     try {
-        await Promise.all([loadTasks(), loadEmployees(), loadNotifications(), loadPipelines(), loadAnalytics(), loadCalendar(), loadActivity(), loadAdminUsers()]);
+        await refreshVisibleDashboard();
         updateLiveSyncStatus(`Live updates · synced ${new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date())}`, true);
     } catch {
         updateLiveSyncStatus("Live updates · reconnecting...", false);
     } finally {
         liveRefreshInProgress = false;
     }
+}
+
+async function refreshVisibleDashboard() {
+    const requests = [
+        loadTasks(),
+        loadNotifications(),
+        loadAnalytics(),
+        loadCalendar(),
+        loadActivity(),
+    ];
+    if (canManageEmployees) {
+        requests.push(loadEmployees(), loadPipelines(), loadWorkload());
+    }
+    if (currentAccountRole === "Admin") requests.push(loadAdminUsers());
+    await Promise.all(requests);
 }
 
 function updateLiveSyncStatus(message, connected) {
@@ -225,11 +258,23 @@ async function loadAdminUsers() {
     const response = await fetch("/api/users");
     if (!response.ok) return;
     const users = await response.json();
-    document.getElementById("adminUserList").innerHTML = users.map(user => `<div class="admin-user-row"><span><strong>${escapeHtml(user.username)}</strong><small>${user.two_factor_enabled ? "2FA enabled" : "2FA off"}</small></span><select onchange="updateUserRole(${user.id}, this.value)"><option ${user.role === "Admin" ? "selected" : ""}>Admin</option><option ${user.role === "Manager" ? "selected" : ""}>Manager</option><option ${user.role === "Employee" ? "selected" : ""}>Employee</option></select></div>`).join("");
+    document.getElementById("adminUserList").innerHTML = users.map(user => `<div class="admin-user-row"><span><strong>${escapeHtml(user.username)}</strong><small>${escapeHtml(user.role)} · ${user.two_factor_enabled ? "2FA enabled" : "2FA off"}</small></span><select aria-label="Access role for ${escapeHtml(user.username)}" onchange="updateUserRole(${user.id}, this.value)">${user.role === "Manager" ? `<option selected>Manager</option>` : ""}<option ${user.role === "Admin" ? "selected" : ""}>Admin</option><option ${user.role === "Employee" ? "selected" : ""}>Employee</option></select></div>`).join("");
 }
 
 async function updateUserRole(id, role) {
-    await fetch(`/api/users/${id}/role`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+    const response = await fetch(`/api/users/${id}/role`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        document.getElementById("monitoringMessage").textContent = data.message || "Could not update account access.";
+        await loadAdminUsers();
+        return;
+    }
+    document.getElementById("monitoringMessage").textContent = `${data.username} now has ${data.role} access.`;
+    if (data.id === Number(document.getElementById("accountRoleBadge").dataset.userId)) {
+        window.location.reload();
+        return;
+    }
+    await loadAdminUsers();
 }
 
 async function loadMonitoringMetrics() {
@@ -241,7 +286,8 @@ async function loadMonitoringMetrics() {
 async function createDatabaseBackup() {
     const response = await fetch("/api/admin/backup", { method: "POST" });
     const data = await response.json();
-    document.getElementById("monitoringMessage").textContent = response.ok ? `Backup created: ${data.file}` : data.message;
+    document.getElementById("monitoringMessage").textContent = response.ok ? "Workspace export downloaded." : data.message;
+    if (response.ok) window.location.assign(data.download_url);
 }
 
 async function loadEmployees() {
@@ -252,40 +298,143 @@ async function loadEmployees() {
     employees.forEach(employee => { counts[employee.status] = (counts[employee.status] || 0) + 1; });
     window.taskflowEmployees = employees;
     const assigneeSelect = document.getElementById("taskFormAssignee");
-    assigneeSelect.innerHTML = `<option value="">Unassigned</option>${employees.map(employee => `<option value="${escapeHtml(employee.name)}">${escapeHtml(employee.name)}</option>`).join("")}`;
+    assigneeSelect.innerHTML = `<option value="">Unassigned</option>${employees.map(employee => `<option value="${employee.id}">${escapeHtml(employee.name)}</option>`).join("")}`;
     document.getElementById("employeeGrid").innerHTML = `
         <article class="employee-stat-card blue"><span class="employee-icon">👥</span><div><h3>${employees.length}</h3><p>Total employees</p></div></article>
         <article class="employee-stat-card green"><span class="employee-icon">✅</span><div><h3>${counts.Active}</h3><p>Active</p></div></article>
         <article class="employee-stat-card amber"><span class="employee-icon">🧳</span><div><h3>${counts["On leave"]}</h3><p>On leave</p></div></article>
         <article class="employee-stat-card red"><span class="employee-icon">⏳</span><div><h3>${counts.Inactive}</h3><p>Inactive</p></div></article>
-        <div class="employee-records">${employees.map(employee => `
-            <div class="employee-record"><div><strong>${escapeHtml(employee.name)}</strong><small>${escapeHtml(employee.role)} · ${escapeHtml(employee.email)}</small></div><span class="status-tag ${employee.status === "Active" ? "success" : "running"}">${escapeHtml(employee.status)}</span><button class="task-action" onclick="openEmployeeDetails(${employee.id})">View</button><button class="task-action" onclick="openEmployeeModal(${employee.id})">Edit</button><button class="task-action task-action-delete" onclick="deleteEmployee(${employee.id})">Delete</button></div>`).join("") || "<p class=\"lane-empty\">No employees yet. Add your first employee.</p>"}</div>`;
+        <div class="employee-records">${employees.map(employee => {
+            const initials = employee.name.split(" ").map(part => part[0]).join("").slice(0, 2).toUpperCase();
+            return `
+            <div class="employee-record">
+                <div class="employee-main">
+                    <span class="employee-avatar-mini">${escapeHtml(initials)}</span>
+                    <div>
+                        <strong>${escapeHtml(employee.name)}</strong>
+                        <small>${escapeHtml(employee.role)} · ${escapeHtml(employee.account_role || "Employee")} access · ${escapeHtml(employee.email)}</small>
+                    </div>
+                </div>
+                <span class="status-tag ${employee.status === "Active" ? "success" : "running"}">${escapeHtml(employee.status)}</span>
+                ${canManageEmployees ? `<div class="employee-actions">
+                    <button class="task-action" onclick="openEmployeeDetails(${employee.id})">View</button>
+                    ${employee.account_linked ? `<span class="status-tag success">Joined</span>` : `<button class="task-action" onclick="inviteEmployee(${employee.id})">Invite</button>`}
+                    <button class="task-action" onclick="openEmployeeModal(${employee.id})">Edit</button>
+                    <button class="task-action task-action-delete" onclick="deleteEmployee(${employee.id})">Delete</button>
+                </div>` : `<div class="employee-actions"><button class="task-action" onclick="openEmployeeDetails(${employee.id})">View</button></div>`}
+            </div>`;
+        }).join("") || `<p class="lane-empty">No employees yet. Add your first employee.</p>`}</div>`;
+}
+
+async function loadWorkload() {
+    const response = await fetch("/api/workload");
+    if (!response.ok) throw new Error("Could not load team workload.");
+    const employees = await response.json();
+    document.getElementById("workloadList").innerHTML = employees.map(employee => `
+        <tr>
+            <th scope="row"><strong>${escapeHtml(employee.name)}</strong><small>${escapeHtml(employee.role)}</small></th>
+            <td>${employee.active_tasks}</td>
+            <td><span class="workload-number${employee.overdue_tasks ? " is-overdue" : ""}">${employee.overdue_tasks}</span></td>
+            <td>${employee.due_soon_tasks}</td>
+        </tr>`).join("") || `<tr><td colspan="4" class="workload-empty">No employees in this workspace yet.</td></tr>`;
+}
+
+async function inviteEmployee(id) {
+    if (!canManageEmployees) {
+        document.getElementById("employeeMessage").textContent = "Only workspace Admins and Managers can create invitations.";
+        return;
+    }
+    try {
+        const response = await fetch(`/api/employees/${id}/invite`, { method: "POST" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            document.getElementById("employeeMessage").textContent = data.message || "Could not create invitation.";
+            return;
+        }
+        document.getElementById("employeeInviteUrl").value = data.invite_url;
+        document.getElementById("employeeInviteDescription").textContent =
+            `Created for ${data.email} with ${data.account_role} account access. Share this link only with the invited employee.`;
+        document.getElementById("employeeInviteExpiry").textContent =
+            `Expires ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(data.expires_at))}.`;
+        document.getElementById("employeeInviteMessage").textContent = "";
+        document.getElementById("copyEmployeeInviteButton").textContent = "Copy invitation link";
+        document.getElementById("employeeInviteModal").classList.remove("hidden");
+        document.getElementById("employeeInviteModal").setAttribute("aria-hidden", "false");
+        document.getElementById("employeeInviteUrl").focus();
+    } catch {
+        document.getElementById("employeeMessage").textContent = "Could not connect to TaskFlow. Check your connection and try again.";
+    }
+}
+
+async function copyEmployeeInvitation() {
+    const inviteInput = document.getElementById("employeeInviteUrl");
+    const message = document.getElementById("employeeInviteMessage");
+    const invitationUrl = inviteInput.value;
+    if (!invitationUrl) {
+        message.textContent = "Generate a new invitation link before copying.";
+        return;
+    }
+    try {
+        await navigator.clipboard.writeText(invitationUrl);
+        message.textContent = "Invitation link copied. Send it securely to the invited employee.";
+    } catch {
+        inviteInput.focus();
+        inviteInput.select();
+        message.textContent = "Automatic copy is unavailable. The link is selected; copy it with Ctrl+C.";
+    }
 }
 
 async function submitEmployeeForm(event) {
     event.preventDefault();
-    const employeeId = document.getElementById("employeeId").value;
-    const response = await fetch(employeeId ? `/api/employees/${employeeId}` : "/api/employees", {
-        method: employeeId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            name: document.getElementById("employeeName").value.trim(),
-            email: document.getElementById("employeeEmail").value.trim(),
-            role: document.getElementById("employeeRole").value.trim(),
-            status: document.getElementById("employeeStatus").value,
-        }),
-    });
-    if (!response.ok) {
-        document.getElementById("taskMessage").textContent = (await response.json()).message || "Could not save employee.";
+    if (!canManageEmployees) {
+        document.getElementById("employeeFormMessage").textContent = "Employee management requires an Admin account.";
         return;
     }
-    closeEmployeeModal();
-    await Promise.all([loadEmployees(), loadNotifications()]);
+    const employeeId = document.getElementById("employeeId").value;
+    const submitButton = document.getElementById("employeeSubmitButton");
+    const formMessage = document.getElementById("employeeFormMessage");
+    submitButton.disabled = true;
+    submitButton.textContent = "Saving...";
+    formMessage.textContent = "";
+
+    try {
+        const response = await fetch(employeeId ? `/api/employees/${employeeId}` : "/api/employees", {
+            method: employeeId ? "PATCH" : "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: document.getElementById("employeeName").value.trim(),
+                email: document.getElementById("employeeEmail").value.trim(),
+                role: document.getElementById("employeeRole").value.trim(),
+                status: document.getElementById("employeeStatus").value,
+                ...(!employeeId ? { account_role: document.getElementById("employeeAccountRole").value } : {}),
+            }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            formMessage.textContent = result.message || "Could not save employee.";
+            return;
+        }
+
+        closeEmployeeModal();
+        document.getElementById("employeeMessage").textContent = employeeId ? "Employee updated." : "Employee added.";
+        try {
+            await Promise.all([loadEmployees(), loadNotifications()]);
+        } catch {
+            document.getElementById("employeeMessage").textContent = "Employee saved, but the list could not refresh. Reload the dashboard.";
+        }
+        if (!employeeId) await inviteEmployee(result.id);
+    } catch {
+        formMessage.textContent = "Could not connect to TaskFlow. Check your connection and try again.";
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = document.getElementById("employeeId").value ? "Save Changes" : "Add Employee";
+    }
 }
 
-function openEmployeeModal() {
-    const employeeId = arguments[0];
+function openEmployeeModal(employeeId) {
     const employee = window.taskflowEmployees?.find(item => item.id === employeeId);
+    document.getElementById("employeeFormMessage").textContent = "";
+    document.getElementById("employeeMessage").textContent = "";
     document.getElementById("employeeId").value = employee?.id || "";
     document.getElementById("employeeModalTitle").textContent = employee ? "Edit Employee" : "Add Employee";
     document.getElementById("employeeSubmitButton").textContent = employee ? "Save Changes" : "Add Employee";
@@ -293,6 +442,9 @@ function openEmployeeModal() {
     document.getElementById("employeeEmail").value = employee?.email || "";
     document.getElementById("employeeRole").value = employee?.role || "Employee";
     document.getElementById("employeeStatus").value = employee?.status || "Active";
+    const accountRole = document.getElementById("employeeAccountRole");
+    accountRole.value = employee?.account_role || "Employee";
+    accountRole.disabled = Boolean(employee?.account_linked);
     document.getElementById("employeeModal").classList.remove("hidden");
     document.getElementById("employeeModal").setAttribute("aria-hidden", "false");
 }
@@ -301,6 +453,7 @@ function closeEmployeeModal() {
     document.getElementById("employeeModal").classList.add("hidden");
     document.getElementById("employeeModal").setAttribute("aria-hidden", "true");
     document.getElementById("employeeForm").reset();
+    document.getElementById("employeeFormMessage").textContent = "";
     document.getElementById("employeeId").value = "";
     document.getElementById("employeeModalTitle").textContent = "Add Employee";
     document.getElementById("employeeSubmitButton").textContent = "Add Employee";
@@ -309,7 +462,7 @@ function closeEmployeeModal() {
 function openEmployeeDetails(id) {
     const employee = window.taskflowEmployees?.find(item => item.id === id);
     if (!employee) return;
-    document.getElementById("employeeDetailsContent").innerHTML = `<div class="employee-profile"><div class="profile-avatar">${escapeHtml(employee.name.slice(0, 2).toUpperCase())}</div><h4>${escapeHtml(employee.name)}</h4><p>${escapeHtml(employee.role)}</p><dl><dt>Email</dt><dd>${escapeHtml(employee.email)}</dd><dt>Status</dt><dd>${escapeHtml(employee.status)}</dd><dt>Employee ID</dt><dd>#${employee.id}</dd></dl></div>`;
+    document.getElementById("employeeDetailsContent").innerHTML = `<div class="employee-profile"><div class="profile-avatar">${escapeHtml(employee.name.slice(0, 2).toUpperCase())}</div><h4>${escapeHtml(employee.name)}</h4><p>${escapeHtml(employee.role)} · ${escapeHtml(employee.account_role || "Employee")} account</p><dl><dt>Email</dt><dd>${escapeHtml(employee.email)}</dd><dt>Status</dt><dd>${escapeHtml(employee.status)}</dd><dt>Employee ID</dt><dd>#${employee.id}</dd></dl></div>`;
     document.getElementById("employeeDetailsModal").classList.remove("hidden");
     document.getElementById("employeeDetailsModal").setAttribute("aria-hidden", "false");
 }
@@ -317,6 +470,12 @@ function openEmployeeDetails(id) {
 function closeEmployeeDetails() {
     document.getElementById("employeeDetailsModal").classList.add("hidden");
     document.getElementById("employeeDetailsModal").setAttribute("aria-hidden", "true");
+}
+
+function closeEmployeeInvite() {
+    document.getElementById("employeeInviteModal").classList.add("hidden");
+    document.getElementById("employeeInviteModal").setAttribute("aria-hidden", "true");
+    document.getElementById("employeeInviteMessage").textContent = "";
 }
 
 async function deleteEmployee(id) {
@@ -406,6 +565,23 @@ async function setupTwoFactor() {
     const response = await fetch("/api/security/2fa/setup", { method: "POST" });
     const data = await response.json();
     document.getElementById("settingsMessage").textContent = response.ok ? `Scan this OTP URI in your authenticator: ${data.otpauth_uri}` : data.message;
+}
+
+async function saveRecoveryEmail(event) {
+    event.preventDefault();
+    const email = document.getElementById("settingRecoveryEmail").value.trim();
+    const message = document.getElementById("settingsMessage");
+    try {
+        const response = await fetch("/api/account/recovery-email", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+        message.textContent = data.message || "Could not update the recovery email.";
+    } catch {
+        message.textContent = "Could not reach TaskFlow. Check your connection and try again.";
+    }
 }
 
 async function enableBrowserNotifications() {

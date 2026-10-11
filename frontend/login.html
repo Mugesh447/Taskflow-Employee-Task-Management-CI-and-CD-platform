@@ -6,63 +6,128 @@
     <title>TaskFlow - Login</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="auth-page">
-    <main class="auth-shell">
-        <section class="auth-visual" aria-label="TaskFlow overview">
-            <a class="brand-logo" href="/" aria-label="TaskFlow home">
-                <span class="brand-symbol" aria-hidden="true">TF</span>
-                <span>Task<span class="brand-accent">Flow</span></span>
-            </a>
-            <div class="visual-copy">
-                <p class="visual-eyebrow">Employee task management</p>
-                <h1>Build better teams,<br><span>deliver faster.</span></h1>
-                <p>Organize tasks, collaborate with your team, and keep every project moving in one place.</p>
-            </div>
-            <ul class="feature-list">
-                <li><span class="feature-icon icon-blue" aria-hidden="true">&#10003;</span><span><strong>Task management</strong><small>Organize work and track progress.</small></span></li>
-                <li><span class="feature-icon icon-violet" aria-hidden="true">&#9679;</span><span><strong>Team collaboration</strong><small>Keep everyone moving together.</small></span></li>
-                <li><span class="feature-icon icon-teal" aria-hidden="true">&lt;/&gt;</span><span><strong>CI/CD integration</strong><small>Connect delivery to the work.</small></span></li>
-                <li><span class="feature-icon icon-orange" aria-hidden="true">&#8599;</span><span><strong>Local deployment</strong><small>Move from plan to production.</small></span></li>
-            </ul>
-            <div class="workflow-preview" aria-hidden="true">
-                <div class="preview-heading"><span>TEAM WORKFLOW</span><span class="preview-live"><i></i> IN PROGRESS</span></div>
-                <div class="preview-task"><span class="preview-check">&#10003;</span><span>Plan the next release</span><span class="preview-tag">DONE</span></div>
-                <div class="preview-task"><span class="preview-check preview-current"></span><span>Review team tasks</span><span class="preview-tag preview-tag-current">TODAY</span></div>
-                <div class="preview-task"><span class="preview-check"></span><span>Ship the update</span><span class="preview-tag">NEXT</span></div>
-                <div class="preview-progress"><span></span></div>
-            </div>
-            <p class="visual-footer">Plan <span>·</span> Collaborate <span>·</span> Deliver</p>
-        </section>
+<body class="auth-page login-page">
+    <main class="login-shell">
+        <div class="login-frame">
+            <section class="login-visual" aria-label="TaskFlow overview">
+                <a class="login-brand" href="/" aria-label="TaskFlow home">
+                    <span class="login-brand-icon" aria-hidden="true">
+                        <svg viewBox="0 0 32 32" focusable="false">
+                            <rect x="1" y="1" width="30" height="30" rx="5" fill="#f8fbff"/>
+                            <path d="m7 16 6 6L26 9" fill="none" stroke="#1768df" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+                        </svg>
+                    </span>
+                    <span class="login-brand-name">Task<span>Flow</span></span>
+                </a>
+                <p class="login-brand-caption">Employee Task Management &amp;<br>CI/CD Platform</p>
+                <div class="login-accent-rule" aria-hidden="true"></div>
 
-        <section class="auth-side" aria-labelledby="loginHeading">
-            <div class="auth-topline">New to TaskFlow? <a href="register.html">Create account</a></div>
-            <div class="auth-card">
-                <div class="auth-card-brand">
-                    <span class="brand-symbol" aria-hidden="true">TF</span>
-                    <span>Task<span class="brand-accent">Flow</span></span>
+                <div class="login-visual-copy">
+                    <h1>Plan. Track. <span>Deploy.</span></h1>
+                    <p>Manage your tasks, collaborate with your team, and experience seamless CI/CD pipelines for faster and reliable deployments.</p>
                 </div>
-                <p class="form-eyebrow">WELCOME BACK</p>
-                <h2 id="loginHeading">Sign in to TaskFlow</h2>
-                <p class="form-lede">Pick up where your team left off.</p>
-                <form class="auth-form" onsubmit="login(event)">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" placeholder="Enter your username" autocomplete="username" minlength="3" maxlength="80" required>
-                    <label for="password">Password</label>
-                    <div class="password-field">
-                        <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" minlength="8" maxlength="128" required>
-                        <button class="password-toggle" type="button" onclick="togglePassword('password', this)" aria-label="Show password">Show</button>
+
+                <ul class="login-feature-list">
+                    <li><span aria-hidden="true">✓</span>Assign &amp; Track Employee Tasks</li>
+                    <li><span aria-hidden="true">✓</span>Monitor Project Progress</li>
+                    <li><span aria-hidden="true">✓</span>Build, Test &amp; Deploy with CI/CD</li>
+                    <li><span aria-hidden="true">✓</span>Powered by AWS Cloud</li>
+                </ul>
+
+                <div class="login-flow-art" aria-hidden="true">
+                    <div class="login-pipeline">
+                        <span>CI</span>
+                        <svg viewBox="0 0 112 54" focusable="false">
+                            <path d="M9 27C24 4 38 4 56 27s32 23 47 0M9 27c15 23 29 23 47 0S88 4 103 27" fill="none" stroke="#5290ff" stroke-linecap="round" stroke-width="10"/>
+                            <path d="M9 27c15-23 29-23 47 0s32 23 47 0M9 27c15 23 29 23 47 0S88 4 103 27" fill="none" stroke="#69b5ff" stroke-linecap="round" stroke-width="3"/>
+                        </svg>
+                        <span>CD</span>
+                    </div>
+                    <svg class="login-cloud-art" viewBox="0 0 320 106" focusable="false">
+                        <path d="M111 14C88 0 64 6 55 24c-22 0-36 11-36 27 0 17 14 27 34 27h50" fill="none" stroke="#8aaeff" stroke-dasharray="2 4" stroke-width="1.5"/>
+                        <path d="M191 38h35" fill="none" stroke="#8aaeff" stroke-dasharray="2 4" stroke-width="1.5"/>
+                        <path d="M176 55c0-10 8-18 18-18 4-13 16-21 30-19 12 2 20 10 22 22 11-1 19 6 19 15 0 10-8 16-21 16h-48c-13 0-20-6-20-16z" fill="#fff"/>
+                        <text x="221" y="59" fill="#16345e" font-size="17" font-weight="700" text-anchor="middle">aws</text>
+                        <path d="M204 64c10 5 23 5 34 0" fill="none" stroke="#ef9b28" stroke-linecap="round" stroke-width="2"/>
+                        <path d="M0 100h205" stroke="#183c78" stroke-width="7"/>
+                        <path d="M15 92h105l-6-28H25z" fill="#152f65"/>
+                        <path d="M31 70h69l-5 16H34z" fill="#89a9da"/>
+                        <path d="M44 76h17m-17 5h27" stroke="#edf4ff" stroke-linecap="round" stroke-width="2"/>
+                        <path d="M139 94c8-16 13-25 22-26 8 2 13 11 21 26" fill="none" stroke="#31bc9b" stroke-linecap="round" stroke-width="8"/>
+                        <path d="M153 74c-8-8-9-16-5-22 9 2 14 8 14 18m9 7c8-10 15-12 22-10-1 9-7 14-18 17" fill="#30ba91"/>
+                        <path d="M148 90h31l-4 12h-23z" fill="#dce7f8"/>
+                    </svg>
+                </div>
+            </section>
+
+            <section class="login-panel" aria-labelledby="loginHeading">
+                <header class="login-panel-heading">
+                    <span class="login-panel-icon" aria-hidden="true">
+                        <svg viewBox="0 0 44 44" focusable="false">
+                            <path d="M14 9h-4a3 3 0 0 0-3 3v24a3 3 0 0 0 3 3h24a3 3 0 0 0 3-3V12a3 3 0 0 0-3-3h-4" fill="#fff" stroke="#1768df" stroke-width="3"/>
+                            <path d="M16 7h12v7H16z" fill="#d9e8ff" stroke="#1768df" stroke-width="2"/>
+                            <path d="m13 22 3 3 5-6m-8 12 3 3 5-6m5-6h5m-5 12h5" fill="none" stroke="#1768df" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/>
+                        </svg>
+                    </span>
+                    <h1 id="loginHeading">Task<span>Flow</span></h1>
+                    <p>Employee Task Management &amp; CI/CD Platform</p>
+                </header>
+
+                <div class="login-role-tabs" id="loginRoleTabs" role="group" aria-label="Choose account type">
+                    <button class="is-active" type="button" data-login-role="Employee" aria-pressed="true">Employee Login</button>
+                    <button type="button" data-login-role="Admin" aria-pressed="false">Admin Login</button>
+                </div>
+
+                <form class="login-form" id="loginForm" onsubmit="login(event)">
+                    <input type="hidden" id="loginRole" value="Employee">
+                    <label class="login-input">
+                        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><rect x="2" y="4" width="16" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m3 5 7 6 7-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/></svg>
+                        <input type="text" id="username" name="username" placeholder="Enter your email or username" aria-label="Email address or username" autocomplete="username" minlength="3" maxlength="160" required>
+                    </label>
+                    <label class="login-input">
+                        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><rect x="3" y="8" width="14" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M6 8V5a4 4 0 0 1 8 0v3m-4 4v2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7"/></svg>
+                        <input type="password" id="password" name="password" placeholder="Enter your password" aria-label="Password" autocomplete="current-password" minlength="8" maxlength="128" required>
+                        <button class="login-password-toggle" type="button" onclick="togglePassword('password', this)" aria-label="Show password">◉</button>
+                    </label>
+                    <div class="login-form-options">
+                        <label><input type="checkbox" id="rememberMe"><span>Remember me</span></label>
+                        <button class="login-text-button" type="button" onclick="showPasswordRecovery()">Forgot password?</button>
                     </div>
                     <div id="otpField" class="hidden-auth-field">
                         <label for="otp">Authenticator code</label>
                         <input type="text" id="otp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="Enter 6-digit code" autocomplete="one-time-code">
                     </div>
-                    <button class="auth-submit" type="submit">Sign in</button>
+                    <button class="login-submit" type="submit">
+                        <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M11 3h5a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-5M3 10h10m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>
+                        Login
+                    </button>
                 </form>
-                <p id="message" class="form-message" role="status" aria-live="polite"></p>
-                <div class="auth-divider"><span>Secure team workspace</span></div>
-            </div>
-            <p class="auth-legal">TaskFlow <span>·</span> Manage work with clarity</p>
-        </section>
+
+                <form class="login-form recovery-form" id="passwordRecoveryForm" onsubmit="requestPasswordReset(event)" hidden>
+                    <p class="recovery-copy">Enter your username or Enter Your Email. If the account exists and email delivery is configured, we’ll email you a secure reset link.</p>
+                    <label class="login-input">
+                        <input type="text" id="recoveryIdentifier" name="identifier" placeholder="Username or recovery email" aria-label="Username or recovery email" autocomplete="username" maxlength="160" required>
+                    </label>
+                    <button class="login-submit" type="submit">Send reset link</button>
+                    <button class="login-text-button recovery-back" type="button" onclick="showLoginForm()">Back to login</button>
+                </form>
+
+                <form class="login-form recovery-form" id="passwordResetForm" onsubmit="confirmPasswordReset(event)" hidden>
+                    <p class="recovery-copy">Choose a new password. Reset links expire after 30 minutes and can only be used once.</p>
+                    <label class="login-input">
+                        <input type="password" id="resetPassword" name="new-password" placeholder="New password (8–128 characters)" aria-label="New password" autocomplete="new-password" minlength="8" maxlength="128" required>
+                    </label>
+                    <label class="login-input">
+                        <input type="password" id="resetPasswordConfirmation" name="confirm-new-password" placeholder="Confirm new password" aria-label="Confirm new password" autocomplete="new-password" minlength="8" maxlength="128" required>
+                    </label>
+                    <button class="login-submit" type="submit">Reset password</button>
+                    <button class="login-text-button recovery-back" type="button" onclick="showLoginForm()">Back to login</button>
+                </form>
+
+                <p id="message" class="login-message" role="status" aria-live="polite"></p>
+                <p class="login-register-link" id="loginRegisterLink">New employee? <a href="register.html">Create an account</a></p>
+            </section>
+        </div>
     </main>
     <script src="auth.js" defer></script>
 </body>

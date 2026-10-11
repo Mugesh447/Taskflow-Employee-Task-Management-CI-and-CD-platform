@@ -8,7 +8,7 @@ Set required secrets in `.env`, then run:
 docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile production up --build -d
 ```
 
-The application listens on port `5001`. PostgreSQL stores application data and Redis is available for background workers.
+The application listens on port `5001`. PostgreSQL stores application data and Redis is available for other background work. The overdue reminder worker is enabled through `TASKFLOW_START_REMINDER_SCHEDULER=true` in the supplied Docker Compose and Kubernetes configurations; it checks every 300 seconds by default. In multi-worker deployments, a unique database key prevents duplicate reminders. Set `TASKFLOW_REMINDER_INTERVAL_SECONDS` to change the check interval (minimum 30 seconds).
 
 ## Kubernetes
 

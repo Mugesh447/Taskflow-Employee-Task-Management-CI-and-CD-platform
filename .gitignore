@@ -1,8 +1,26 @@
-node_modules/ 
-.env 
-.next/ 
-dist/ 
-build/ 
-__pycache__/ 
-*.pyc 
-*.db 
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+instance/
+backend/instance/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+crash.log
+
+# IDE
+.vscode/
+.idea/

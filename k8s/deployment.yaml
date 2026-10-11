@@ -32,6 +32,20 @@ spec:
                 secretKeyRef:
                   name: taskflow-secret
                   key: database-uri
+            - name: TASKFLOW_START_REMINDER_SCHEDULER
+              value: "true"
+            - name: TASKFLOW_SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-secret
+                  key: smtp-user
+                  optional: true
+            - name: TASKFLOW_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: taskflow-secret
+                  key: smtp-password
+                  optional: true
           volumeMounts:
             - name: taskflow-data
               mountPath: /app/instance

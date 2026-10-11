@@ -19,11 +19,11 @@
             <nav class="sidebar-nav" aria-label="Workspace">
                 <a class="nav-link is-active" href="#overview"><span aria-hidden="true">&#9638;</span> Dashboard</a>
                 <a class="nav-link" href="#task-board"><span aria-hidden="true">&#9744;</span> Tasks</a>
-                <a class="nav-link" href="#employees"><span aria-hidden="true">&#128100;</span> Employees</a>
-                <a class="nav-link" href="#service"><span aria-hidden="true">&#9678;</span> CI/CD Pipeline</a>
+                <a class="nav-link manager-only" href="#employees" hidden><span aria-hidden="true">&#128100;</span> Employees</a>
+                <a class="nav-link manager-only" href="#service" hidden><span aria-hidden="true">&#9678;</span> CI/CD Pipeline</a>
                 <a class="nav-link" href="#notifications"><span aria-hidden="true">&#128276;</span> Notifications</a>
                 <a class="nav-link" href="#settings"><span aria-hidden="true">&#9881;</span> Settings</a>
-                <a class="nav-link" href="#adminPanel"><span aria-hidden="true">&#9878;</span> Admin</a>
+                <a class="nav-link admin-only" href="#adminPanel" hidden><span aria-hidden="true">&#9878;</span> Admin</a>
             </nav>
             <div class="sidebar-bottom">
                 <span class="online-indicator"></span>
@@ -42,6 +42,7 @@
                     <span class="topbar-date" id="currentDate" aria-live="polite"></span>
                     <span class="account-avatar" aria-hidden="true">TF</span>
                     <span id="welcomeUser" class="welcome-user"></span>
+                    <span id="accountRoleBadge" class="status-tag"></span>
                     <button class="button button-quiet" type="button" onclick="logout()">Log out</button>
                 </div>
             </header>
@@ -53,7 +54,7 @@
                         <h1>TaskFlow Dashboard</h1>
                         <p class="section-copy">Manage tasks and keep your work moving.</p>
                     </div>
-                    <button class="button button-primary create-task-shortcut" type="button" onclick="openTaskModal()">+ Create task</button>
+                    <button class="button button-primary create-task-shortcut manager-only" type="button" onclick="openTaskModal()" hidden>+ Create task</button>
                 </section>
 
                 <section class="metric-grid" aria-label="Task summary">
@@ -93,7 +94,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="task-table-toolbar">
+                            <div class="task-table-toolbar manager-only" hidden>
                                 <div class="chip-row">
                                     <button class="chip chip-active" type="button">All (12)</button>
                                     <button class="chip" type="button">To Do (4)</button>
@@ -111,14 +112,15 @@
                             </div>
                         </section>
 
-                        <section class="panel employee-panel" id="employees" aria-labelledby="employeeHeading">
-                            <div class="panel-heading"><div><h2 id="employeeHeading">Employees</h2><p class="panel-subtitle">Team distribution</p></div><button class="button button-secondary" type="button" onclick="openEmployeeModal()">+ Add Employee</button></div>
+                        <section class="panel employee-panel manager-only" id="employees" aria-labelledby="employeeHeading" hidden>
+                            <div class="panel-heading"><div><h2 id="employeeHeading">Employees</h2><p class="panel-subtitle">Add an employee, then create a secure invitation link to share. Links expire after 7 days.</p></div><button class="button button-secondary" id="addEmployeeButton" type="button" onclick="openEmployeeModal()">+ Add Employee</button></div>
+                            <p id="employeeMessage" class="form-message" role="status" aria-live="polite"></p>
                             <div class="employee-grid" id="employeeGrid"></div>
                         </section>
                     </div>
 
                     <aside class="secondary-column">
-                        <section class="panel service-panel" id="service" aria-labelledby="serviceHeading">
+                        <section class="panel service-panel manager-only" id="service" aria-labelledby="serviceHeading" hidden>
                             <div class="panel-heading"><div><h2 id="serviceHeading">System status</h2><p class="panel-subtitle">Live backend connection</p></div><button class="button button-secondary" type="button" onclick="triggerPipeline()">Run pipeline</button></div>
                             <div class="service-status-row"><span class="service-dot is-checking" id="serviceDot"></span><strong id="serviceState">Checking service</strong></div>
                             <p id="serviceDetail" class="service-detail">Connecting to the TaskFlow API...</p>
@@ -151,6 +153,11 @@
                         <button class="button button-secondary" type="button" onclick="setupTwoFactor()">Set up authenticator OTP</button>
                         <button class="button button-secondary" type="button" onclick="enableBrowserNotifications()">Enable browser notifications</button>
                     </div>
+                    <form class="recovery-email-settings" onsubmit="saveRecoveryEmail(event)">
+                        <label for="settingRecoveryEmail">Password recovery email</label>
+                        <div><input type="email" id="settingRecoveryEmail" maxlength="160" autocomplete="email" placeholder="you@example.com" required><button class="button button-secondary" type="submit">Save email</button></div>
+                        <small>Reset links are sent to this address. Keep it current so you can recover your account.</small>
+                    </form>
                     <p id="settingsMessage" class="form-message" role="status" aria-live="polite"></p>
                 </section>
                 <section class="product-grid">
@@ -167,10 +174,19 @@
                         <div class="panel-heading"><div><h2 id="activityHeading">Activity history</h2><p class="panel-subtitle">Recent workspace events</p></div></div>
                         <div id="activityList" class="activity-list"></div>
                     </section>
-                    <section class="panel admin-panel" id="adminPanel" aria-labelledby="adminHeading">
+                    <section class="panel workload-panel manager-only" aria-labelledby="workloadHeading" hidden>
+                        <div class="panel-heading"><div><h2 id="workloadHeading">Team workload</h2><p class="panel-subtitle">Assigned tasks by employee</p></div></div>
+                        <div class="workload-table-wrap">
+                            <table class="workload-table">
+                                <thead><tr><th scope="col">Employee</th><th scope="col">Active</th><th scope="col">Overdue</th><th scope="col">Due in 7 days</th></tr></thead>
+                                <tbody id="workloadList"><tr><td colspan="4" class="workload-empty">Loading team workload...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="panel admin-panel admin-only" id="adminPanel" aria-labelledby="adminHeading" hidden>
                         <div class="panel-heading"><div><h2 id="adminHeading">Admin control</h2><p class="panel-subtitle">Manage workspace access</p></div></div>
                         <div id="adminUserList" class="admin-user-list"><p class="lane-empty">Admin access required.</p></div>
-                        <div class="admin-actions"><button class="button button-secondary" type="button" onclick="loadMonitoringMetrics()">Refresh monitoring</button><button class="button button-secondary" type="button" onclick="createDatabaseBackup()">Create database backup</button></div>
+                        <div class="admin-actions"><button class="button button-secondary" type="button" onclick="loadMonitoringMetrics()">Refresh monitoring</button><button class="button button-secondary" type="button" onclick="createDatabaseBackup()">Export workspace backup</button></div>
                         <p id="monitoringMessage" class="form-message" role="status" aria-live="polite"></p>
                     </section>
                 </section>
@@ -240,7 +256,10 @@
                 <label><span>Name *</span><input id="employeeName" maxlength="80" required></label>
                 <label><span>Email *</span><input id="employeeEmail" type="email" maxlength="160" required></label>
                 <label><span>Role</span><input id="employeeRole" maxlength="80" value="Employee"></label>
+                <label><span>Account access</span><select id="employeeAccountRole"><option value="Employee">Employee</option></select></label>
+                <small class="form-hint">Account access is separate from the job title above. Employee accounts receive task-specific access.</small>
                 <label><span>Status</span><select id="employeeStatus"><option>Active</option><option>On leave</option><option>Inactive</option></select></label>
+                <p id="employeeFormMessage" class="form-message" role="status" aria-live="polite"></p>
                 <div class="modal-actions"><button type="button" class="button button-quiet" onclick="closeEmployeeModal()">Cancel</button><button type="submit" class="button button-primary" id="employeeSubmitButton">Add Employee</button></div>
             </form>
         </div>
@@ -250,6 +269,26 @@
             <div class="modal-header"><h3 id="employeeDetailsTitle">Employee details</h3><button type="button" class="modal-close" aria-label="Close" onclick="closeEmployeeDetails()">×</button></div>
             <div id="employeeDetailsContent" class="employee-details-content"></div>
             <div class="modal-actions"><button type="button" class="button button-primary" onclick="closeEmployeeDetails()">Close</button></div>
+        </div>
+    </div>
+    <div class="modal-backdrop hidden" id="employeeInviteModal" aria-hidden="true">
+        <div class="task-modal" role="dialog" aria-modal="true" aria-labelledby="employeeInviteTitle">
+            <div class="modal-header">
+                <h3 id="employeeInviteTitle">Employee invitation ready</h3>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeEmployeeInvite()">×</button>
+            </div>
+            <div class="invite-link-content">
+                <p id="employeeInviteDescription">Share this one-time invitation link securely with the employee.</p>
+                <label for="employeeInviteUrl">Invitation link</label>
+                <input id="employeeInviteUrl" type="text" readonly autocomplete="off">
+                <p class="form-hint">Anyone with this link can create the invited account. Share it only with the intended employee.</p>
+                <p id="employeeInviteExpiry" class="invite-expiry"></p>
+                <p id="employeeInviteMessage" class="form-message" role="status" aria-live="polite"></p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="button button-quiet" onclick="closeEmployeeInvite()">Close</button>
+                <button type="button" class="button button-primary" id="copyEmployeeInviteButton" onclick="copyEmployeeInvitation()">Copy invitation link</button>
+            </div>
         </div>
     </div>
     <div class="modal-backdrop hidden" id="commentsModal" aria-hidden="true">
