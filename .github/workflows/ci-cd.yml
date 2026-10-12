@@ -49,6 +49,22 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      - name: Validate AWS deployment configuration
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+          ECS_SERVICE_NAME: ${{ vars.ECS_SERVICE_NAME }}
+          TASKFLOW_PUBLIC_URL: ${{ vars.TASKFLOW_PUBLIC_URL }}
+        run: |
+          missing=0
+          for name in AWS_DEPLOY_ROLE_ARN ECR_REPOSITORY ECS_CLUSTER_NAME ECS_SERVICE_NAME TASKFLOW_PUBLIC_URL; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing required GitHub Actions variable: $name" >&2
+              missing=1
+            fi
+          done
+          exit "$missing"
       - name: Configure AWS credentials with GitHub OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
