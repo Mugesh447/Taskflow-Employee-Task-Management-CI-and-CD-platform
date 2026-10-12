@@ -141,6 +141,8 @@ In the GitHub repository, add these **Actions variables** from the corresponding
 | `ECS_TASK_DEFINITION_FAMILY` | `ecs_task_definition_family` |
 | `TASKFLOW_PUBLIC_URL` | `https://` followed by the configured `app_domain` |
 
+`AWS_REGION` falls back to `ap-south-1` when the repository variable is unset, matching the Terraform default. If the infrastructure was provisioned in another region, set `AWS_REGION` to the `aws_region` Terraform output before deploying.
+
 Merge or push a commit to `main`. The workflow runs Python tests and Terraform checks on pull requests; on `main`, it builds and pushes an immutable commit-SHA image to ECR (scan-on-push is enabled), records the currently running ECS task definition, deploys the new revision, ensures two tasks are running, and checks the public database-backed `/api/health` endpoint. If ECS stability or the health check fails after deployment begins, the workflow updates ECS back to the previously running task definition and waits for that service to stabilize. Check the failed GitHub Actions run and CloudWatch alarms before retrying; automatic rollback restores the application revision, not database schema or data changes. Open `terraform output -raw application_url` after the deployment succeeds.
 
 For an operator-triggered recovery, first inspect the service events and active task definitions. Select a specific revision known to have passed its health check; do not assume the newest revision is healthy:
